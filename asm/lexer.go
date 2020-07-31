@@ -10,6 +10,11 @@ import (
 type token int
 
 const (
+	hexDigits = "0123456789abcdef"
+	binaryDigits = "01"
+	octalDigits = "01234567"
+	decimalDigits = "01234567890"
+
 	tokEOF token = iota
 	tokNewLine
 	tokIdentifier
@@ -51,7 +56,8 @@ func (s *source) getString(firstRune rune, allowed string) string {
 	}
 }
 
-// getNumber returns a number from the stream.
+// getNumber returns a number from the stream. If firstRune > 0 it is the
+// first rune of the number, which has already been consumed.
 func (s *source) getNumber(firstRune rune, base int, allowed string) (t token, text string, val int64, eof bool) {
 	str := s.getString(firstRune, allowed)
 	if str == "" {
@@ -90,6 +96,7 @@ func (s *source) getToken() (t token, text string, val int64, eof bool) {
 		// Identifier or keyword.
 		return tokIdentifier, s.getWord(r), 0, false
 	}
+
 	if r == '0' {
 		// A number.
 		r, eof = s.peekRune()
@@ -99,16 +106,19 @@ func (s *source) getToken() (t token, text string, val int64, eof bool) {
 		}
 		if r == 'x' {
 			s.consumeRune()
-			return s.getNumber(0, 16, "0123456789abcdef")
+			return s.getNumber(0, 16, hexDigits)
 		}
 		if r == 'b' {
 			s.consumeRune()
-			return s.getNumber(0, 2, "01")
+			return s.getNumber(0, 2, binaryDigits)
 		}
-		return s.getNumber('0', 8, "01234567")
+		return s.getNumber('0', 8, octalDigits)
 	}
 	if unicode.IsDigit(r) {
-		return s.getNumber(r, 10, "0123456789")
+		return s.getNumber(r, 10, decimalDigits)
+	}
+	if r == '$' {
+		return s.getNumber(0, 16, hexDigits)
 	}
 	return tokChar, string(r), 0, false
 }

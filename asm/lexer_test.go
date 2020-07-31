@@ -35,9 +35,9 @@ func TestTokenizeIdentifiers(t *testing.T) {
 }
 
 func TestTokenizeNumbers(t *testing.T) {
-	src := newSourceFromString("0 010 0b101 0x4Af 42")
-	got := make([]int64, 0, 5)
-	want := []int64{0, 8, 5, 0x4af, 42}
+	src := newSourceFromString("0 010 0b101 0x4Af 42 $42 \t\r")
+	got := make([]int64, 0, 6)
+	want := []int64{0, 8, 5, 0x4af, 42, 0x42}
 	for {
 		tok, _, i, eof := src.getToken()
 		if tok == tokNewLine {
