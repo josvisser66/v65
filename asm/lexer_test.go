@@ -61,24 +61,16 @@ func TestTokenizeNumbers(t *testing.T) {
 	}
 }
 
-func TestTokenizeBadHexNumber1(t *testing.T) {
-	src := newSourceFromString("0x")
-	tok, _, _, eof := src.getToken()
-	if eof {
-		t.Fatalf("eof; got:true, want:false")
-	}
-	if tok != tokError {
-		t.Fatalf("tok; got:%d, want:%d", tok, tokError)
-	}
-}
-
-func TestTokenizeBadHexNumber2(t *testing.T) {
-	src := newSourceFromString("0xg")
-	tok, _, _, eof := src.getToken()
-	if eof {
-		t.Fatalf("eof; got:true, want:false")
-	}
-	if tok != tokError {
-		t.Fatalf("tok; got:%d, want:%d", tok, tokError)
+func TestTokenizeBadHexNumbers(t *testing.T) {
+	bad := []string{"0x", "$", "0xj", "$g"}
+	for _, h := range bad {
+		src := newSourceFromString(h)
+		tok, s, _, eof := src.getToken()
+		if eof {
+			t.Fatalf("eof; got:true, want:false")
+		}
+		if tok != tokError {
+			t.Fatalf("tok(%s); got:%d, want:%d", s, tok, tokError)
+		}
 	}
 }
