@@ -63,3 +63,11 @@ func (s *source) consumeRune() (r rune, eof bool) {
 	s.nextChar = 0
 	return
 }
+
+// skipToEOLN skips all characters until the end of the line. After
+// calling this function the next rune returned will be the first rune
+// of the next line.
+func (s* source) skipToEOLN() {
+	s.nextChar = 0
+	s.curPos = len(s.curLine) + 1
+}
