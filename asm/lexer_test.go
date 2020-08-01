@@ -2,27 +2,35 @@ package asm
 
 import "testing"
 
+func (s *source) mustGetToken(t *testing.T) token {
+	tok, err := s.getToken()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	return tok
+}
+
 func TestTokenizeIdentifiers(t *testing.T) {
 	src := newSourceFromString("  aAp\t_NOOT\rMies123 _wim12_foo ; comment")
 	want := []string{"aap", "_noot", "mies123", "_wim12_foo"}
 	got := make([]string, 0, 4)
+loop:
 	for {
-		tok, s, _, eof := src.getToken()
-		if eof {
-			t.Errorf("eof; got:true, want:false")
-			break
+		switch tok := src.mustGetToken(t).(type) {
+		case *tokNewLine:
+			break loop
+		case *tokEOF:
+			t.Error("missing newline")
+			break loop
+		case *tokIdentifier:
+			got = append(got, tok.id)
+		default:
+			t.Errorf("getToken(); got:%T, want:%T", tok, &tokIdentifier{})
 		}
-		if tok == tokNewLine {
-			break
-		}
-		if tok != tokIdentifier {
-			t.Errorf("getToken(); got:%d, want:%d", tok, tokIdentifier)
-		}
-		got = append(got, s)
 	}
-	tok, _, _, _ := src.getToken()
-	if tok != tokEOF {
-		t.Errorf("getToken(); got:%d, want:%d", tok, tokEOF)
+	tok := src.mustGetToken(t)
+	if _, ok := tok.(*tokEOF); !ok {
+		t.Errorf("getToken(); got:%T, want:%T", tok, &tokEOF{})
 	}
 	if len(got) != len(want) {
 		t.Errorf("len(got); got:%d, want:%d", len(got), len(want))
@@ -38,18 +46,16 @@ func TestTokenizeNumbers(t *testing.T) {
 	src := newSourceFromString("0 010 0b101 0x4Af 42 $42 \t\r")
 	got := make([]int64, 0, 6)
 	want := []int64{0, 8, 5, 0x4af, 42, 0x42}
+loop:
 	for {
-		tok, _, i, eof := src.getToken()
-		if tok == tokNewLine {
-			break
+		switch tok := src.mustGetToken(t).(type) {
+		case *tokNewLine:
+			break loop
+		case *tokIntNumber:
+			got = append(got, tok.n)
+		default:
+			t.Errorf("getToken(); got:%T, want:%T", tok, &tokIntNumber{})
 		}
-		if eof {
-			t.Fatalf("eof; got:true, want:false")
-		}
-		if tok != tokNumber {
-			t.Fatalf("tok; got:%d, want:%d", tok, tokNumber)
-		}
-		got = append(got, i)
 	}
 	if len(got) != len(want) {
 		t.Errorf("len(got); got:%d, want:%d", len(got), len(want))
@@ -65,12 +71,9 @@ func TestTokenizeBadHexNumbers(t *testing.T) {
 	bad := []string{"0x", "$", "0xj", "$g"}
 	for _, h := range bad {
 		src := newSourceFromString(h)
-		tok, s, _, eof := src.getToken()
-		if eof {
-			t.Fatalf("eof; got:true, want:false")
-		}
-		if tok != tokError {
-			t.Fatalf("tok(%s); got:%d, want:%d", s, tok, tokError)
+		_, err := src.getToken()
+		if err == nil {
+			t.Fatalf("err; got:nil, want:non-nil")
 		}
 	}
 }
