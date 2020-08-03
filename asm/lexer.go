@@ -27,6 +27,15 @@ type tokIntNumber struct {
 type tokRune struct {
 	r rune
 }
+type tokOpcode struct {
+	opcode string
+}
+type tokRegisterA struct {}
+type tokRegisterX struct {}
+type tokRegisterY struct {}
+
+type tokEqu struct {}
+type tokInclude struct {}
 type tokError struct {
 	s       string
 	source  *source
@@ -34,10 +43,14 @@ type tokError struct {
 	linePos int
 }
 
+// metaMap is a map from an identifier to a token that represents
+// an assembler meta instruction.
+var metaMap = make(map[string]token)
+
 // Error returns a string description of this error.
 // This function makes tokError an error.
 func (t *tokError) Error() string {
-	return fmt.Sprintf("%d:%d error: %s", t.lineNo, t.linePos, t.s)
+	return fmt.Sprintf("[%d:%d] %s", t.lineNo, t.linePos, t.s)
 }
 
 // getWord returns the next word from the stream. firstRune is the first
@@ -75,11 +88,11 @@ func (s *source) getString(firstRune rune, allowed string) string {
 
 // getNumber returns a number from the stream. If firstRune > 0 it is the
 // first rune of the number, which has already been consumed.
-func (s *source) getIntNumber(firstRune rune, base int, allowed string) (token, error) {
+func (s *source) getIntNumber(firstRune rune, base int, allowed string) token {
 	pos := s.curPos
 	str := s.getString(firstRune, allowed)
 	if str == "" {
-		return nil, &tokError{
+		return &tokError{
 			s:       "Illegal number (empty string)",
 			source:  s,
 			lineNo:  s.lineNo,
@@ -88,27 +101,48 @@ func (s *source) getIntNumber(firstRune rune, base int, allowed string) (token, 
 	}
 	i, err := strconv.ParseInt(str, base, 64)
 	if err != nil {
-		return nil, &tokError{
+		return &tokError{
 			s:       err.Error(),
 			source:  s,
 			lineNo:  s.lineNo,
 			linePos: pos,
 		}
 	}
-	return &tokIntNumber{i}, nil
+	return &tokIntNumber{i}
+}
+
+// getIdentifier takes a first rune, parses a valid identifier out of the stream
+// and then returns the right token for it.
+func (s *source) getIdentifier(firstRune rune) token {
+	id := s.getWord(firstRune)
+	if _, ok := opcodes[id]; ok {
+		return &tokOpcode{opcode: id}
+	}
+	if tok, ok := metaMap[id]; ok {
+		return tok
+	}
+	switch {
+	case id == "a":
+		return &tokRegisterA{}
+	case id == "x":
+		return &tokRegisterX{}
+	case id == "y":
+		return &tokRegisterY{}
+	}
+	return &tokIdentifier{id: id}
 }
 
 // getToken returns the next token in the stream.
-func (s *source) getToken() (token, error) {
+func (s *source) getToken() token {
 	var r rune
 	for {
 		var eof bool
 		r, eof = s.consumeRune()
 		if eof {
-			return &tokEOF{}, nil
+			return &tokEOF{}
 		}
 		if r == '\n' {
-			return &tokNewLine{}, nil
+			return &tokNewLine{}
 		}
 		if !unicode.IsSpace(r) {
 			break
@@ -117,12 +151,12 @@ func (s *source) getToken() (token, error) {
 	if r == ';' {
 		// Ignores comments.
 		s.skipToEOLN()
-		return &tokNewLine{}, nil
+		return &tokNewLine{}
 	}
 	r = unicode.ToLower(r)
 	if unicode.IsLetter(r) || r == '_' {
 		// Identifier or keyword.
-		return &tokIdentifier{s.getWord(r)}, nil
+		return s.getIdentifier(r)
 	}
 
 	if r == '0' {
@@ -130,7 +164,7 @@ func (s *source) getToken() (token, error) {
 		r, eof := s.peekRune()
 		if r == '\n' || eof {
 			// A number just before the newline.
-			return &tokIntNumber{0}, nil
+			return &tokIntNumber{0}
 		}
 		if r == 'x' {
 			s.consumeRune()
@@ -148,5 +182,5 @@ func (s *source) getToken() (token, error) {
 	if r == '$' {
 		return s.getIntNumber(0, 16, hexDigits)
 	}
-	return &tokRune{r}, nil
+	return &tokRune{r}
 }

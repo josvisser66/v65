@@ -3,9 +3,9 @@ package asm
 import "testing"
 
 func (s *source) mustGetToken(t *testing.T) token {
-	tok, err := s.getToken()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	tok := s.getToken()
+	if tt, ok := tok.(*tokError); ok {
+		t.Fatalf("unexpected error: %v", tt)
 	}
 	return tok
 }
@@ -71,9 +71,9 @@ func TestTokenizeBadHexNumbers(t *testing.T) {
 	bad := []string{"0x", "$", "0xj", "$g"}
 	for _, h := range bad {
 		src := newSourceFromString(h)
-		_, err := src.getToken()
-		if err == nil {
-			t.Fatalf("err; got:nil, want:non-nil")
+		tok := src.getToken()
+		if _, ok := tok.(*tokError); !ok {
+			t.Fatalf("getToken(); got:%T, want:%T", tok, &tokError{})
 		}
 	}
 }
