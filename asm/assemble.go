@@ -24,23 +24,19 @@ func assemble(src *source) (*segment, error) {
 
 loop:
 	for {
-		tok := src.getToken()
-		if segment.lexError(tok) {
-			src.skipToEOLN()
-			continue
-		}
-		if ls, ok := tok.(lineStarter); ok {
-			src = ls.assemble(segment, src, tok)
-			continue
-
-		}
-		switch tok.(type) {
-		case *tokEOF:
-			break loop
-		case *tokNewLine:
-		default:
-			segment.error(src, "unexpected token: %T", tok)
-			src.skipToEOLN()
+		if tok := src.getToken(); segment.lexError(tok) {
+			src.skipRestOfLine()
+		} else {
+			switch tok.(type) {
+			case lineStarter:
+				src = tok.(lineStarter).assemble(segment, src, tok)
+			case *tokEOF:
+				break loop
+			case *tokNewLine:
+			default:
+				segment.error(src, "unexpected token at start of line: %T", tok)
+				src.skipRestOfLine()
+			}
 		}
 	}
 

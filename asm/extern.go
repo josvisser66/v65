@@ -1,29 +1,33 @@
 package asm
 
-type tokExtern struct {}
+type tokExtern struct{}
 
-func (tok *tokExtern) assemble(seg *segment, src *source, _ token) *source {
+func (*tokExtern) assemble(seg *segment, src *source, _ token) *source {
 	for {
-		tok := src.getToken()
-		if seg.lexError(tok) {
-			src.skipToEOLN()
+		// First, we expect an identifier.
+		tok, ok := src.expect(seg, func(t token) bool {
+			_, ok := t.(*tokIdentifier)
+			return ok
+		}, "identifier")
+		if !ok {
+			src.skipRestOfLine()
 			return src
 		}
-		if id, ok := tok.(*tokIdentifier); ok {
-			if seg.symbols.register(id.id, &externSymbol{id.id}) {
-				seg.warning(src, "redefinition of symbol %s\n", id.id)
-			}
+		id := tok.(*tokIdentifier)
+		if seg.symbols.register(id.id, &externSymbol{id.id}) {
+			seg.warning(src, "redefinition of symbol %s\n", id.id)
 		}
+		// Then we either get a comma and we go around again, or we
+		// get a newline and then we're done.
 		tok = src.getToken()
 		switch t := tok.(type) {
 		case *tokNewLine:
 			return src
-		case *tokRune:
-			if t.r == ',' {
-			continue
-			}
+		case *tokComma:
+			// pass
 		default:
-			seg.error(src, "unexpected token: %T", t)
+			seg.error(src, "expected comma or end of line, not '%T'", t)
+			src.skipToEOLN()
 		}
 	}
 }
@@ -31,4 +35,3 @@ func (tok *tokExtern) assemble(seg *segment, src *source, _ token) *source {
 func init() {
 	metaMap["extern"] = &tokExtern{}
 }
-

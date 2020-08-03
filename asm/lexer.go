@@ -17,6 +17,7 @@ const (
 type token interface {
 }
 type tokEOF struct{}
+type tokComma struct{}
 type tokNewLine struct{}
 type tokIdentifier struct {
 	id string
@@ -30,12 +31,12 @@ type tokRune struct {
 type tokOpcode struct {
 	opcode string
 }
-type tokRegisterA struct {}
-type tokRegisterX struct {}
-type tokRegisterY struct {}
+type tokRegisterA struct{}
+type tokRegisterX struct{}
+type tokRegisterY struct{}
 
-type tokEqu struct {}
-type tokInclude struct {}
+type tokEqu struct{}
+type tokInclude struct{}
 type tokError struct {
 	s       string
 	source  *source
@@ -150,16 +151,20 @@ func (s *source) getToken() token {
 	}
 	if r == ';' {
 		// Ignores comments.
-		s.skipToEOLN()
+		s.skipRestOfLine()
 		return &tokNewLine{}
+	}
+	if unicode.IsDigit(r) && r != '0' {
+		// Special casing for 0x etc below.
+		return s.getIntNumber(r, 10, decimalDigits)
 	}
 	r = unicode.ToLower(r)
 	if unicode.IsLetter(r) || r == '_' {
 		// Identifier or keyword.
 		return s.getIdentifier(r)
 	}
-
-	if r == '0' {
+	switch r {
+	case '0':
 		// A number.
 		r, eof := s.peekRune()
 		if r == '\n' || eof {
@@ -175,12 +180,20 @@ func (s *source) getToken() token {
 			return s.getIntNumber(0, 2, binaryDigits)
 		}
 		return s.getIntNumber('0', 8, octalDigits)
-	}
-	if unicode.IsDigit(r) {
-		return s.getIntNumber(r, 10, decimalDigits)
-	}
-	if r == '$' {
+	case '$':
 		return s.getIntNumber(0, 16, hexDigits)
+	case ',':
+		return &tokComma{}
+	default:
+		return &tokRune{r}
 	}
-	return &tokRune{r}
+}
+
+func (s *source) expect(seg *segment, f func(token) bool, typ string) (tok token, ok bool) {
+	tok = s.getToken()
+	ok = f(tok)
+	if !ok {
+		seg.error(s, "expected %s, not '%T'", typ, tok)
+	}
+	return tok, ok
 }

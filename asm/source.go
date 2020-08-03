@@ -7,6 +7,7 @@ import (
 )
 
 type source struct {
+	filename string
 	lines    []string
 	lineNo   int
 	curLine  []rune
@@ -32,7 +33,9 @@ func newSource(filename string) (*source, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newSourceFromString(string(content)), nil
+	s := newSourceFromString(string(content))
+	s.filename = filename
+	return s, nil
 }
 
 // peekRune returns the next character without consuming it.
@@ -64,10 +67,18 @@ func (s *source) consumeRune() (r rune, eof bool) {
 	return
 }
 
-// skipToEOLN skips all characters until the end of the line. After
+// skipRestOfLine skips all characters until the end of the line. After
 // calling this function the next rune returned will be the first rune
 // of the next line.
-func (s* source) skipToEOLN() {
+func (s* source) skipRestOfLine() {
 	s.nextChar = 0
 	s.curPos = len(s.curLine) + 1
+}
+
+// skipToEOLN skips all characters until the end of the line. After
+// calling this function the next rune returned will be a newline
+// character.
+func (s *source) skipToEOLN() {
+	s.nextChar = '\n'
+	s.curPos = len(s.curLine)
 }

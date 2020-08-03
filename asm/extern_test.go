@@ -1,26 +1,31 @@
 package asm
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestExtern(t *testing.T) {
 	for _, tc := range []struct {
-		src     string
+		src       string
 		wantErr   bool
-		nSymbols       int
+		nSymbols  int
 		nWarnings int
-		symbols []string
+		symbols   []string
 	}{
-		{"extern foo",
-			false,
-			1,
-			0,
-			[]string{"foo"},
-		},
+		{"extern foo", false, 1, 0, []string{"foo"}},
+		{"extern foo, bar", false, 2, 0, []string{"foo", "bar"}},
+		{"extern foo, bar, foo", false, 2, 1, []string{"foo", "bar"}},
+		{"extern", true, 0, 0, []string{}},
+		{"extern foo,", true, 1, 0, []string{"foo"}},
+		{"extern foo,4", true, 1, 0, []string{"foo"}},
 	} {
+		println(tc.wantErr, tc.src)
 		src := newSourceFromString(tc.src)
 		seg, err := assemble(src)
 		if (err != nil && !tc.wantErr) || (err == nil && tc.wantErr) {
 			t.Errorf("assemble() err; got:%v, want-err:%v", err, tc.wantErr)
+		}
+		if seg == nil {
 			continue
 		}
 		if seg.warnings != tc.nWarnings {
