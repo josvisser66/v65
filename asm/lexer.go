@@ -18,6 +18,14 @@ type token interface {
 }
 type tokEOF struct{}
 type tokComma struct{}
+type tokLeftParen struct{}
+type tokRightParen struct{}
+type tokOr struct{}
+type tokAnd struct{}
+type tokPlus struct{}
+type tokMinus struct{}
+type tokMultiply struct{}
+type tokDivide struct{}
 type tokNewLine struct{}
 type tokIdentifier struct {
 	id string
@@ -184,6 +192,22 @@ func (s *source) getToken() token {
 		return s.getIntNumber(0, 16, hexDigits)
 	case ',':
 		return &tokComma{}
+	case '|':
+		return &tokOr{}
+	case '&':
+		return &tokAnd{}
+	case '+':
+		return &tokPlus{}
+	case '-':
+		return &tokMinus{}
+	case '*':
+		return &tokMultiply{}
+	case '/':
+		return &tokDivide{}
+	case '(':
+		return &tokLeftParen{}
+	case ')':
+		return &tokRightParen{}
 	default:
 		return &tokRune{r}
 	}
