@@ -213,11 +213,3 @@ func (s *source) getToken() token {
 	}
 }
 
-func (s *source) expect(seg *segment, f func(token) bool, typ string) (tok token, ok bool) {
-	tok = s.getToken()
-	ok = f(tok)
-	if !ok {
-		seg.error(s, "expected %s, not '%T'", typ, tok)
-	}
-	return tok, ok
-}

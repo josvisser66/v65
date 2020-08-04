@@ -74,11 +74,13 @@ func TestExpressionEval(t *testing.T) {
 		}},
 	} {
 		println(tc.str, "=>", tc.wantNum)
-		src := newSourceFromString(tc.str)
-		saveErrors := seg.errors
-		val, next := src.expr(seg)
+		ctx := &context{
+			src: newSourceFromString(tc.str),
+			seg: seg,
+		}
+		val, next := ctx.expr()
 		if next == nil {
-			next = src.getToken()
+			next = ctx.src.getToken()
 		}
 		if (val.sym == nil && tc.wantSym) || (val.sym!= nil && !tc.wantSym) {
 			t.Errorf("val.sym: got:%v, want-nil:%v", val.sym, tc.wantSym)
@@ -89,8 +91,8 @@ func TestExpressionEval(t *testing.T) {
 		if !tc.wantNext(next) {
 			t.Error("tc.wantNext(t); got:false, want:true")
 		}
-		if saveErrors+tc.wantErrors != seg.errors {
-			t.Errorf("seg.errors; got:%d, want:%d", seg.errors, saveErrors+tc.wantErrors)
+		if tc.wantErrors != ctx.errors {
+			t.Errorf("seg.errors; got:%d, want:%d", ctx.errors, tc.wantErrors)
 		}
 	}
 }

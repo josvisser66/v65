@@ -2,49 +2,41 @@
 package asm
 
 import "fmt"
-import "errors"
 
 // lineStarter is an interface that tokens implement if they can start a line.
 type lineStarter interface {
-	assemble(seg *segment, src *source, tok token) *source
+	assemble(ctx *context)
 }
 
 // Assemble assembles a source file.
-func Assemble(filename string) (*segment, error) {
+func Assemble(filename string) (*context, error) {
 	src, err := newSource(filename)
 	if err != nil {
 		return nil, err
 	}
-	return assemble(src)
+	ctx := &context{seg: newSegment(), src: src}
+	ctx.assemble()
+	fmt.Sprintf("There were %d error(s) and %d warning(s).\n", ctx.errors, ctx.warnings)
+	return ctx, nil
 }
 
 // assemble assembles from a source object.
-func assemble(src *source) (*segment, error) {
-	segment := newSegment()
-
+func (ctx *context) assemble() {
 loop:
 	for {
-		if tok := src.getToken(); segment.lexError(tok) {
-			src.skipRestOfLine()
+		if tok := ctx.src.getToken(); ctx.lexError(tok) {
+			ctx.src.skipRestOfLine()
 		} else {
 			switch tok.(type) {
 			case lineStarter:
-				src = tok.(lineStarter).assemble(segment, src, tok)
+				tok.(lineStarter).assemble(ctx)
 			case *tokEOF:
 				break loop
 			case *tokNewLine:
 			default:
-				segment.error(src, "unexpected token at start of line: %T", tok)
-				src.skipRestOfLine()
+				ctx.error("unexpected token at start of line: %T", tok)
+				ctx.src.skipRestOfLine()
 			}
 		}
 	}
-
-	fmt.Sprintf("There were %d error(s) and %d warning(s).\n", segment.errors, segment.warnings)
-
-	if segment.errors > 0 {
-		return nil, errors.New("no output generated because of errors")
-	}
-
-	return segment, nil
 }

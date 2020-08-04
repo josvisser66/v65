@@ -5,9 +5,9 @@ type exprValue struct {
 	val int64
 }
 
-func (s *source) expr(seg *segment) (val *exprValue, next token) {
+func (ctx *context) expr() (val *exprValue, next token) {
 	// Gets the token that starts the expression.
-	tok := s.getToken()
+	tok := ctx.src.getToken()
 
 	// If this token is an identifier, there is a change that we have
 	// an expression that requires relocation. Such an expression starts
@@ -15,42 +15,42 @@ func (s *source) expr(seg *segment) (val *exprValue, next token) {
 	// offset.
 	if id, ok := tok.(*tokIdentifier); ok {
 		var sym symbol
-		if sym, ok = seg.symbols[id.id]; !ok {
+		if sym, ok = ctx.seg.symbols[id.id]; !ok {
 			// The error will be generated down there somewhere.
-			v, next := s.level1(seg, tok)
+			v, next := ctx.level1(tok)
 			return &exprValue{nil, v}, next
 		}
 		if externSym, ok := sym.(*externSymbol); ok {
 			// This is an external symbol. The rest of the expression
 			// can be + or - something else.
-			next := s.getToken()
+			next := ctx.src.getToken()
 			var v int64
 			if _, ok := next.(*tokPlus); ok {
-				v, next = s.level1(seg, nil)
+				v, next = ctx.level1(nil)
 			} else if _, ok := next.(*tokMinus); ok {
-				v, next = s.level1(seg, nil)
+				v, next = ctx.level1(nil)
 			}
 			return &exprValue{externSym, v}, next
 		}
 		// The identifier is a label with a known value. Fallthrough.
 	}
 
-	v, next := s.level1(seg, tok)
+	v, next := ctx.level1(tok)
 	return &exprValue{nil, v}, next
 }
 
-func (s *source) level1(seg *segment, nextToken token) (val int64, next token) {
-	val, next = s.level2(seg, nextToken)
+func (ctx *context) level1(nextToken token) (val int64, next token) {
+	val, next = ctx.level2(nextToken)
 	var v int64
 	for {
 		if next == nil {
-			next = s.getToken()
+			next = ctx.src.getToken()
 		}
 		if _, ok := next.(*tokOr); ok {
-			v, next = s.level2(seg, nil)
+			v, next = ctx.level2(nil)
 			val = val | v
 		} else if _, ok := next.(*tokAnd); ok {
-			v, next = s.level2(seg, nil)
+			v, next = ctx.level2(nil)
 			val = val & v
 		} else {
 			return val, next
@@ -58,18 +58,18 @@ func (s *source) level1(seg *segment, nextToken token) (val int64, next token) {
 	}
 }
 
-func (s *source) level2(seg *segment, nextToken token) (val int64, next token) {
-	val, next = s.level3(seg, nextToken)
+func (ctx *context) level2(nextToken token) (val int64, next token) {
+	val, next = ctx.level3(nextToken)
 	var v int64
 	for {
 		if next == nil {
-			next = s.getToken()
+			next = ctx.src.getToken()
 		}
 		if _, ok := next.(*tokPlus); ok {
-			v, next = s.level3(seg, nil)
+			v, next = ctx.level3(nil)
 			val = val + v
 		} else if _, ok := next.(*tokMinus); ok {
-			v, next = s.level3(seg, nil)
+			v, next = ctx.level3(nil)
 				val = val - v
 		} else {
 			return val, next
@@ -77,20 +77,20 @@ func (s *source) level2(seg *segment, nextToken token) (val int64, next token) {
 	}
 }
 
-func (s *source) level3(seg *segment, nextToken token) (val int64, next token) {
-	val, next = s.level4(seg, nextToken)
+func (ctx *context) level3(nextToken token) (val int64, next token) {
+	val, next = ctx.level4(nextToken)
 	var v int64
 	for {
 		if next == nil {
-			next = s.getToken()
+			next = ctx.src.getToken()
 		}
 		if _, ok := next.(*tokMultiply); ok {
-			v, next = s.level4(seg, nil)
+			v, next = ctx.level4(nil)
 			val = val * v
 		} else if _, ok := next.(*tokDivide); ok {
-			v, next = s.level4(seg, nil)
+			v, next = ctx.level4(nil)
 			if v == 0 {
-				seg.error(s, "division by zero")
+				ctx.error("division by zero")
 			} else {
 				val = val / v
 			}
@@ -100,50 +100,50 @@ func (s *source) level3(seg *segment, nextToken token) (val int64, next token) {
 	}
 }
 
-func (s *source) level4(seg *segment, nextToken token) (val int64, next token) {
+func (ctx *context) level4(nextToken token) (val int64, next token) {
 	if nextToken == nil {
-		nextToken = s.getToken()
+		nextToken = ctx.src.getToken()
 	}
-	if seg.lexError(nextToken) {
-		s.skipRestOfLine()
+	if ctx.lexError(nextToken) {
+		ctx.src.skipRestOfLine()
 		return 0,nil
 	}
 	if num, ok := nextToken.(*tokIntNumber); ok {
-		return num.n, s.getToken()
+		return num.n, ctx.src.getToken()
 	}
 	if _, ok := nextToken.(*tokLeftParen); ok {
-		v, next := s.level1(seg, nil)
+		v, next := ctx.level1(nil)
 		if _, ok := next.(*tokRightParen); !ok {
-			seg.error(s, "expected ')', not '%T'", next)
-			s.skipToEOLN()
+			ctx.error("expected ')', not '%T'", next)
+			ctx.src.skipToEOLN()
 			return 0, nil
 		}
 		return v , nil
 	}
 	if id, ok := nextToken.(*tokIdentifier); ok {
 		// Label, must be locally defined.
-		sym, ok := seg.symbols[id.id]
+		sym, ok := ctx.seg.symbols[id.id]
 		if !ok {
-			seg.error(s, "unknown label: %s", id.id)
+			ctx.error("unknown label: %s", id.id)
 			return 0, nil
 		}
 		if localSym, ok := sym.(*localSymbol); ok {
 			return localSym.value, nil
 		}
-		seg.error(s, "illegal use in expression of external label: %s", id.id)
+		ctx.error("illegal use in expression of external label: %s", id.id)
 		return 0, nil
 	}
 	if _, ok := nextToken.(*tokPlus); ok {
 		// Unary plus operator.
-		v, next := s.level4(seg, nil)
+		v, next := ctx.level4(nil)
 		return v, next
 	}
 	if _, ok := nextToken.(*tokMinus); ok {
 		// Unary minus operator.
-		v, next := s.level4(seg, nil)
+		v, next := ctx.level4(nil)
 		return -v, next
 	}
-	seg.error(s, "invalid expression; unexpected token: '%T'", nextToken)
-	s.skipRestOfLine()
+	ctx.error("invalid expression; unexpected token: '%T'", nextToken)
+	ctx.src.skipRestOfLine()
 	return 0, nil
 }
