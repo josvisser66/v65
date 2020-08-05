@@ -72,6 +72,14 @@ func TestExpressionEval(t *testing.T) {
 			_, ok := t.(*tokNewLine)
 			return ok
 		}},
+		{",", 0, false, 1, func(t token) bool {
+			_, ok := t.(*tokComma)
+			return ok
+		}},
+		{"", 0, false, 1, func(t token) bool {
+			_, ok := t.(*tokNewLine)
+			return ok
+		}},
 	} {
 		println(tc.str, "=>", tc.wantNum)
 		ctx := &context{

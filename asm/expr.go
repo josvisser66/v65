@@ -144,6 +144,5 @@ func (ctx *context) level4(nextToken token) (val int64, next token) {
 		return -v, next
 	}
 	ctx.error("invalid expression; unexpected token: '%T'", nextToken)
-	ctx.src.skipRestOfLine()
-	return 0, nil
+	return 0, nextToken
 }
