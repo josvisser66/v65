@@ -14,8 +14,13 @@ func Assemble(filename string) (*context, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx := &context{seg: newSegment(), src: src}
+	ctx := &context{pass: 1, seg: newSegment(), src: src}
 	ctx.assemble()
+	if ctx.errors == 0 {
+		ctx.pass++
+		ctx.seg.lc = 0
+		ctx.assemble()
+	}
 	fmt.Sprintf("There were %d error(s) and %d warning(s).\n", ctx.errors, ctx.warnings)
 	return ctx, nil
 }

@@ -4,6 +4,7 @@ import "fmt"
 
 // context is the assembly context.
 type context struct{
+	pass int
 	src *source
 	seg *segment
 	errors int

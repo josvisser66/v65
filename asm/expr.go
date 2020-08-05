@@ -123,7 +123,7 @@ func (ctx *context) level4(nextToken token) (val int64, next token) {
 	if id, ok := nextToken.(*tokIdentifier); ok {
 		// Label, must be locally defined.
 		sym, ok := ctx.seg.symbols[id.id]
-		if !ok {
+		if !ok && ctx.pass == 2 {
 			ctx.error("unknown label: %s", id.id)
 			return 0, nil
 		}
