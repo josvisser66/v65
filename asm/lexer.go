@@ -30,6 +30,9 @@ type tokNewLine struct{}
 type tokIdentifier struct {
 	id string
 }
+type tokString struct {
+	s string
+}
 type tokIntNumber struct {
 	n int64
 }
@@ -78,8 +81,8 @@ func (s *source) getWord(firstRune rune) string {
 	}
 }
 
-// getHexString returns the next hex/bin/decimal digit string from the stream.
-func (s *source) getString(firstRune rune, allowed string) string {
+// getAllowedString returns the next hex/bin/decimal digit string from the stream.
+func (s *source) getAllowedString(firstRune rune, allowed string) string {
 	str := make([]rune, 0, 32)
 	if firstRune != 0 {
 		str = append(str, firstRune)
@@ -99,7 +102,7 @@ func (s *source) getString(firstRune rune, allowed string) string {
 // first rune of the number, which has already been consumed.
 func (s *source) getIntNumber(firstRune rune, base int, allowed string) token {
 	pos := s.curPos
-	str := s.getString(firstRune, allowed)
+	str := s.getAllowedString(firstRune, allowed)
 	if str == "" {
 		return &tokError{
 			s:       "Illegal number (empty string)",
@@ -139,6 +142,31 @@ func (s *source) getIdentifier(firstRune rune) token {
 		return &tokRegisterY{}
 	}
 	return &tokIdentifier{id: id}
+}
+
+// getString returns a string parsed from the input stream.
+func (s *source) getString() token {
+	b := strings.Builder{}
+	for {
+		r, eof := s.peekRune()
+		if r == '\n' || eof {
+			return &tokError{
+				s:       "Unexpected end-of-line",
+				source:  s,
+				lineNo:  s.lineNo,
+				linePos: s.curPos,
+			}
+		}
+		if r == '"' {
+			s.consumeRune()
+			r, _ := s.peekRune()
+			if r != '"' {
+				return &tokString{s: b.String()}
+			}
+		}
+		b.WriteRune(r)
+		s.consumeRune()
+	}
 }
 
 // getToken returns the next token in the stream.
@@ -188,6 +216,22 @@ func (s *source) getToken() token {
 			return s.getIntNumber(0, 2, binaryDigits)
 		}
 		return s.getIntNumber('0', 8, octalDigits)
+	case '\'':
+		r, _ := s.consumeRune()
+		t := &tokRune{r}
+		r, eof := s.peekRune()
+		if !eof && r == '\'' {
+			s.consumeRune()
+			return t
+		}
+		return &tokError{
+			s:       "Expected ' to end character constant",
+			source:  s,
+			lineNo:  s.lineNo,
+			linePos: s.curPos,
+		}
+	case '"':
+		return s.getString()
 	case '$':
 		return s.getIntNumber(0, 16, hexDigits)
 	case ',':

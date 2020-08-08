@@ -77,3 +77,56 @@ func TestTokenizeBadHexNumbers(t *testing.T) {
 		}
 	}
 }
+
+func TestRune(t *testing.T) {
+	src := newSourceFromString("'a'")
+	tok := src.getToken()
+	if tt, ok := tok.(*tokRune); !ok {
+		t.Errorf("getToken(); got:%T, want:%T", tok, &tokRune{})
+	} else if tt.r != 'a' {
+		t.Errorf("tt; got:%c, want:%c", tt.r, 'a')
+	}
+}
+
+func TestBadRune(t *testing.T) {
+	bad := []string{"'b", "'cc'"}
+	for _, h := range bad {
+		src := newSourceFromString(h)
+		tok := src.getToken()
+		if _, ok := tok.(*tokError); !ok {
+			t.Fatalf("getToken(); got:%T, want:%T", tok, &tokError{})
+		}
+	}
+}
+
+func TestString(t *testing.T) {
+	src := newSourceFromString("\"abc\"")
+	tok := src.getToken()
+	if tt, ok := tok.(*tokString); !ok {
+		t.Errorf("getToken(); got:%T, want:%T", tok, &tokString{})
+	} else {
+		if tt.s != "abc" {
+			t.Errorf("tt.s; got:%s, want:%s", tt.s, "abc")
+		}
+	}
+}
+
+func TestStringEmbeddedQuote(t *testing.T) {
+	src := newSourceFromString("\"a\"\"b\"\"c\"")
+	tok := src.getToken()
+	if tt, ok := tok.(*tokString); !ok {
+		t.Errorf("getToken(); got:%T, want:%T", tok, &tokString{})
+	} else {
+		if tt.s != "a\"b\"c" {
+			t.Errorf("tt.s; got:%s, want:%s", tt.s, "a\"b\"c")
+		}
+	}
+}
+
+func TestUnterminatedString(t *testing.T) {
+	src := newSourceFromString("\"a\"\"b\"\"c")
+	tok := src.getToken()
+	if _, ok := tok.(*tokError); !ok {
+		t.Errorf("getToken(); got:%T, want:%T", tok, &tokError{})
+	}
+}
