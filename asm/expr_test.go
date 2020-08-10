@@ -5,7 +5,7 @@ import "testing"
 func TestExpressionEval(t *testing.T) {
 	seg := newSegment()
 	seg.symbols["fu"] = &externSymbol{"fu"}
-	seg.symbols["bar"] = &localSymbol{"bar", 7, 16, false}
+	seg.symbols["bar"] = &localSymbol{"bar", 7, false}
 	for _, tc := range []struct {
 		str        string
 		wantNum    int64

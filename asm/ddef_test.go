@@ -30,8 +30,8 @@ func TestDb(t *testing.T) {
 			seg: newSegment(),
 		}
 		ctx.seg.symbols["foo"] = &externSymbol{"foo"}
-		ctx.seg.symbols["bar"] = &localSymbol{"bar", 42, 1, false}
-		ctx.seg.symbols["baz"] = &localSymbol{"bar", 1000, 2, false}
+		ctx.seg.symbols["bar"] = &localSymbol{"bar", 42,  false}
+		ctx.seg.symbols["baz"] = &localSymbol{"bar", 1000, false}
 		ctx.assemble()
 		if ctx.errors != tc.wantErrors {
 			t.Errorf("assemble() errors; got:%d, want:%d", ctx.errors, tc.wantErrors)

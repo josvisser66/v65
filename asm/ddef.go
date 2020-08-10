@@ -5,6 +5,7 @@ type tokDw struct{}
 type tokDd struct{}
 type tokDs struct{}
 
+// assembleDDef assembles db, dw, and dd instructions.
 func assembleDdef(ctx *context, size int, emit func(int64)) {
 	for {
 		val, next := ctx.expr()
@@ -22,19 +23,23 @@ func assembleDdef(ctx *context, size int, emit func(int64)) {
 	}
 }
 
-func (*tokDb) assemble(ctx *context) {
+// assemble assembles a db instruction.
+func (*tokDb) assemble(ctx *context, _label *localSymbol) {
 	assembleDdef(ctx, 1, func(n int64) { ctx.seg.emit(n) })
 }
 
-func (*tokDw) assemble(ctx *context) {
+// assemble assembles a dw instruction.
+func (*tokDw) assemble(ctx *context, _label *localSymbol) {
 	assembleDdef(ctx, 2, func(n int64) { ctx.seg.emitWord(n) })
 }
 
-func (*tokDd) assemble(ctx *context) {
+// assemble assembles a dd instruction.
+func (*tokDd) assemble(ctx *context, _label *localSymbol) {
 	assembleDdef(ctx, 4, func(n int64) { ctx.seg.emitDWord(n) })
 }
 
-func (*tokDs) assemble(ctx *context) {
+// assemble assembles a ds instruction.
+func (*tokDs) assemble(ctx *context, _label *localSymbol) {
 	for {
 		tok := ctx.src.getToken()
 		tt, ok := tok.(*tokString)

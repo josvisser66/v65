@@ -5,7 +5,7 @@ import "fmt"
 
 // lineStarter is an interface that tokens implement if they can start a line.
 type lineStarter interface {
-	assemble(ctx *context)
+	assemble(ctx *context, label *localSymbol)
 }
 
 // Assemble assembles a source file.
@@ -32,9 +32,21 @@ loop:
 		if tok := ctx.src.getToken(); ctx.lexError(tok) {
 			ctx.src.skipRestOfLine()
 		} else {
+			var label *localSymbol
+			if id, ok := tok.(*tokIdentifier); ok {
+				label = &localSymbol{
+					id:     id.id,
+					value:  int64(ctx.seg.lc),
+					global: false,
+				}
+				if ctx.seg.symbols.register(id.id, label) {
+					ctx.error("duplicate definition of label or symbol: %s", id.id)
+				}
+				tok = ctx.src.getToken()
+			}
 			switch tok.(type) {
 			case lineStarter:
-				tok.(lineStarter).assemble(ctx)
+				tok.(lineStarter).assemble(ctx, label)
 			case *tokEOF:
 				break loop
 			case *tokNewLine:

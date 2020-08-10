@@ -2,7 +2,7 @@ package asm
 
 type tokExtern struct{}
 
-func (*tokExtern) assemble(ctx *context) {
+func (*tokExtern) assemble(ctx *context, _label *localSymbol) {
 	for {
 		// First, we expect an identifier.
 		tok, ok := ctx.expect(func(t token) bool {

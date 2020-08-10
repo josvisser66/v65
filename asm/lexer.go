@@ -46,8 +46,6 @@ type tokRegisterA struct{}
 type tokRegisterX struct{}
 type tokRegisterY struct{}
 
-type tokEqu struct{}
-type tokInclude struct{}
 type tokError struct {
 	s       string
 	source  *source

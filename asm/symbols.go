@@ -12,7 +12,6 @@ type symbolMap map[string]symbol
 type localSymbol struct {
 	id string
 	value int64
-	size int // In bytes.
 	global bool // Should this symbol be exported?
 }
 
@@ -23,7 +22,8 @@ type externSymbol struct {
 }
 
 // register registers a new symbol in the symbol table. Returns false
-// if the symbol already exists it will be replaced with the new one.
+// if the symbol already exists. If that happens it will be replaced
+// with the new one.
 func (m symbolMap) register(id string, sym symbol) bool {
 	 _, ok := m[id]
 	m[id] = sym
