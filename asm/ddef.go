@@ -10,7 +10,6 @@ func assembleDdef(ctx *context, size int, emit func(int64)) {
 		val, next := ctx.expr()
 		ctx.seg.relocs.maybeAdd(val, ctx.seg.lc, size)
 		emit(val.val)
-
 		if _, ok := next.(*tokNewLine); ok {
 			return
 		}
@@ -33,6 +32,31 @@ func (*tokDw) assemble(ctx *context) {
 
 func (*tokDd) assemble(ctx *context) {
 	assembleDdef(ctx, 4, func(n int64) { ctx.seg.emitDWord(n) })
+}
+
+func (*tokDs) assemble(ctx *context) {
+	for {
+		tok := ctx.src.getToken()
+		tt, ok := tok.(*tokString)
+		if !ok {
+			ctx.error("expected string")
+			ctx.src.skipRestOfLine()
+			return
+		}
+		for _, b := range []byte(tt.s) {
+			ctx.seg.emit(int64(b))
+		}
+		next := ctx.src.getToken()
+		if _, ok := next.(*tokNewLine); ok {
+			return
+		}
+		if _, ok := next.(*tokComma); ok {
+			continue
+		}
+		ctx.error("expected ',' or newline, got: '%T'", next)
+		ctx.src.skipRestOfLine()
+		return
+	}
 }
 
 func init() {
