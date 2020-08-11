@@ -16,6 +16,7 @@ func TestEqu(t *testing.T) {
 		{"aap equ foo", 1, 0, "aap", 0},
 		{"aap equ foo+1", 1, 0, "aap", 1},
 		{"equ 5", 0, 1, "", 0},
+		{"label equ *", 0, 0, "label", 0},
 	} {
 		println(tc.str)
 		ctx := &context{
