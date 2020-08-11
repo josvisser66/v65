@@ -8,7 +8,7 @@ type tokDs struct{}
 // assembleDDef assembles db, dw, and dd instructions.
 func assembleDdef(ctx *context, size int, emit func(int64)) {
 	for {
-		val, next := ctx.expr()
+		val, next := ctx.expr(nil)
 		ctx.seg.relocs.maybeAdd(val, ctx.seg.lc, size)
 		emit(val.val)
 		if _, ok := next.(*tokNewLine); ok {

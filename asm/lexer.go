@@ -17,6 +17,7 @@ const (
 type token interface {
 }
 type tokEOF struct{}
+type tokHash struct{}
 type tokComma struct{}
 type tokLeftParen struct{}
 type tokRightParen struct{}
@@ -232,6 +233,8 @@ func (s *source) getToken() token {
 		return s.getString()
 	case '$':
 		return s.getIntNumber(0, 16, hexDigits)
+	case '#':
+		return &tokHash{}
 	case ',':
 		return &tokComma{}
 	case '|':

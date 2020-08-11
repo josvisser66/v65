@@ -5,19 +5,21 @@ type exprValue struct {
 	val int64
 }
 
-func (ctx *context) expr() (val *exprValue, next token) {
+func (ctx *context) expr(firstToken token) (val *exprValue, next token) {
 	// Gets the token that starts the expression.
-	tok := ctx.src.getToken()
+	if firstToken == nil {
+		firstToken = ctx.src.getToken()
+	}
 
 	// If this token is an identifier, there is a change that we have
 	// an expression that requires relocation. Such an expression starts
 	// with an external symbol and then a positive or negative constant
 	// offset.
-	if id, ok := tok.(*tokIdentifier); ok {
+	if id, ok := firstToken.(*tokIdentifier); ok {
 		var sym symbol
 		if sym, ok = ctx.seg.symbols[id.id]; !ok {
 			// The error will be generated down there somewhere.
-			v, next := ctx.level1(tok)
+			v, next := ctx.level1(firstToken)
 			return &exprValue{nil, v}, next
 		}
 		if externSym, ok := sym.(*externSymbol); ok {
@@ -35,7 +37,7 @@ func (ctx *context) expr() (val *exprValue, next token) {
 		// The identifier is a label with a known value. Fallthrough.
 	}
 
-	v, next := ctx.level1(tok)
+	v, next := ctx.level1(firstToken)
 	return &exprValue{nil, v}, next
 }
 

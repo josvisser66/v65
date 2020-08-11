@@ -90,7 +90,7 @@ func TestExpressionEval(t *testing.T) {
 			src: newSourceFromString(tc.str),
 			seg: seg,
 		}
-		val, next := ctx.expr()
+		val, next := ctx.expr(nil)
 		if next == nil {
 			next = ctx.src.getToken()
 		}

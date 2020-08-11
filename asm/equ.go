@@ -3,7 +3,7 @@ package asm
 type tokEqu struct{}
 
 func (*tokEqu) assemble(ctx *context, label *localSymbol) {
-	val, next := ctx.expr()
+	val, next := ctx.expr(nil)
 	if _, ok := next.(*tokNewLine); !ok {
 		ctx.error("expected end-of-line")
 		ctx.src.skipRestOfLine()
