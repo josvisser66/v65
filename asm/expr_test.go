@@ -61,6 +61,10 @@ func TestExpressionEval(t *testing.T) {
 			_, ok := t.(*tokNewLine)
 			return ok
 		}},
+		{"*+5", 5, false, 0, func(t token) bool {
+			_, ok := t.(*tokNewLine)
+			return ok
+		}},
 		{"42,", 42, false, 0, func(t token) bool {
 			_, ok := t.(*tokComma)
 			return ok

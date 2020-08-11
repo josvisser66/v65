@@ -108,6 +108,10 @@ func (ctx *context) level4(nextToken token) (val int64, next token) {
 		ctx.src.skipRestOfLine()
 		return 0,nil
 	}
+	if _,  ok := nextToken.(*tokMultiply); ok {
+		// Current location counter.
+		return int64(ctx.seg.lc), nil
+	}
 	if num, ok := nextToken.(*tokIntNumber); ok {
 		return num.n, ctx.src.getToken()
 	}
