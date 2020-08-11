@@ -11,6 +11,7 @@ func TestEqu(t *testing.T) {
 		wantValue    int64
 	}{
 		{"aap equ 42", 0, 0, "aap", 42},
+		{"foo equ 42", 1, 0, "foo", 42},
 		{"aap equ bar+1", 0, 0, "aap", 43},
 		{"aap equ 1,1", 1, 0, "aap", 1},
 		{"aap equ foo", 1, 0, "aap", 0},
