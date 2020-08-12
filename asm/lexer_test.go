@@ -42,6 +42,16 @@ loop:
 	}
 }
 
+func TestOpcode(t *testing.T) {
+	src := newSourceFromString("BRK")
+	tok:= src.getToken()
+	if op, ok := tok.(*tokOpcode); !ok {
+		t.Errorf("token; got:'%T, want:'%T'", tok, &tokOpcode{})
+	} else if op.opcode != "brk" {
+		t.Errorf("op.opcde; got:'%s, want:'%s'", op.opcode, "brk")
+	}
+}
+
 func TestTokenizeNumbers(t *testing.T) {
 	src := newSourceFromString("0 010 0b101 0x4Af 42 $42 \t\r")
 	got := make([]int64, 0, 6)
