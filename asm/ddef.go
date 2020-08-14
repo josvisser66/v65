@@ -18,8 +18,7 @@ func assembleDdef(ctx *context, size int, emit func(int64)) error {
 		if _, ok := next.(*tokComma); ok {
 			continue
 		}
-		ctx.error("expected ',' or newline, got: '%T'", next)
-		ctx.lexer.src.skipToEOLN()
+		ctx.error("expected ',' or newline, got:%T(%v)'", next, next)
 		return parseError
 	}
 }
@@ -58,8 +57,7 @@ func (*tokDs) assemble(ctx *context, _label *localSymbol) error {
 		if _, ok := next.(*tokComma); ok {
 			continue
 		}
-		ctx.error("expected ',' or newline, got: '%T'", next)
-		ctx.lexer.src.skipToEOLN()
+		ctx.error("expected ',' or newline, got: '%T(%v)'", next, next)
 		return parseError
 	}
 }

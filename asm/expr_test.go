@@ -91,14 +91,13 @@ func TestExpressionEval(t *testing.T) {
 			seg: seg,
 		}
 		val := ctx.expr()
-		next := ctx.lexer.getToken()
 		if (val.sym == nil && tc.wantSym) || (val.sym!= nil && !tc.wantSym) {
 			t.Errorf("val.sym: got:%v, want-nil:%v", val.sym, tc.wantSym)
 		}
 		if val.val != tc.wantNum {
 			t.Errorf("expr(%s); got:%d, want:%d", tc.str, val.val, tc.wantNum)
 		}
-		if !tc.wantNext(next) {
+		if !tc.wantNext(ctx.lexer.getToken()) {
 			t.Error("tc.wantNext(t); got:false, want:true")
 		}
 		if tc.wantErrors != ctx.errors {

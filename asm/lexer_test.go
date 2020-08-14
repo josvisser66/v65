@@ -7,9 +7,6 @@ func (l *lexer) mustGetToken(t *testing.T) token {
 	if tt, ok := tok.(*tokError); ok {
 		t.Fatalf("unexpected lexer error: %v", tt)
 	}
-	if tt, ok := tok.(*tokEOF); ok {
-		t.Fatalf("unexpected eof: %v", tt)
-	}
 	return tok
 }
 
@@ -51,12 +48,13 @@ loop:
 		case *tokIdentifier:
 			got = append(got, tok.id)
 		default:
-			t.Errorf("getToken(); got:%T, want:%T", tok, &tokIdentifier{})
+			t.Errorf("getToken(); got:%T(%v), want:%T", tok, tok, &tokIdentifier{})
 		}
 	}
+	lexer.src.moveToNextLine()
 	tok := lexer.mustGetToken(t)
 	if _, ok := tok.(*tokEOF); !ok {
-		t.Errorf("getToken(); got:%T, want:%T", tok, &tokEOF{})
+		t.Errorf("getToken(); got:%T(%v), want:%T", tok, tok, &tokEOF{})
 	}
 	if len(got) != len(want) {
 		t.Errorf("len(got); got:%d, want:%d", len(got), len(want))

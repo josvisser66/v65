@@ -82,7 +82,6 @@ func (ctx *context) parseAbsolute() (int, *exprValue) {
 		}
 	}
 	ctx.error("unexpected token: '%T'", next)
-	ctx.lexer.src.skipToEOLN()
 	return errorAddrMode, nil
 }
 

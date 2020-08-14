@@ -8,7 +8,7 @@ func (*tokExtern) assemble(ctx *context, _label *localSymbol) error {
 		next := ctx.lexer.getToken()
 		id, ok := next.(*tokIdentifier)
 		if !ok {
-			ctx.error("expected identifier, not: '%T'", next)
+			ctx.error("expected identifier, not: '%T(%v)'", next, next)
 			return parseError
 		}
 		if ctx.seg.symbols.register(id.id, &externSymbol{id.id}) {

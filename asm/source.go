@@ -13,7 +13,6 @@ type source struct {
 	curLine  []rune
 	curPos   int // 1-based, so not directly an index into curLine
 	nextChar rune
-	nextToken token
 }
 
 // newSourceFromString creates a new source file struct from a string value.
@@ -73,6 +72,7 @@ func (s *source) consumeRune() (r rune, eof bool) {
 // moveToNextLine moves to the next line of the input. We never move
 // beyond the line after the next line though.
 func (s *source) moveToNextLine() {
+	s.nextChar = 0
 	if s.lineNo == len(s.lines) + 1 {
 		return
 	}
@@ -82,12 +82,4 @@ func (s *source) moveToNextLine() {
 	if s.lineNo <= len(s.lines) {
 		s.curLine = []rune(s.lines[s.lineNo-1])
 	}
-}
-
-// skipToEOLN skips all characters until the end of the line. After
-// calling this function the next rune returned will be a newline
-// character.
-func (s *source) skipToEOLN() {
-	s.nextChar = '\n'
-	s.curPos = len(s.curLine) + 1
 }

@@ -33,40 +33,39 @@ func Assemble(filename string) (*context, error) {
 func (ctx *context) assemble() {
 loop:
 	for {
-		if tok := ctx.lexer.getToken(); ctx.lexError(tok) {
+		tok := ctx.lexer.getToken()
+		if ctx.lexError(tok) {
 			ctx.lexer.src.moveToNextLine()
-		} else {
-			var label *localSymbol
-			if id, ok := tok.(*tokIdentifier); ok {
-				label = &localSymbol{
-					id:     id.id,
-					value:  int64(ctx.seg.lc),
-					global: false,
-				}
-				if ctx.seg.symbols.register(id.id, label) {
-					ctx.error("duplicate definition of label or symbol: %s", id.id)
-				}
-				tok = ctx.lexer.getToken()
+			continue
+		}
+		var label *localSymbol
+		if id, ok := tok.(*tokIdentifier); ok {
+			label = &localSymbol{
+				id:     id.id,
+				value:  int64(ctx.seg.lc),
+				global: false,
 			}
-			switch tok.(type) {
-			case lineStarter:
-				if err := tok.(lineStarter).assemble(ctx, label); err != nil {
-					ctx.lexer.src.moveToNextLine()
-					continue
-				}
+			if ctx.seg.symbols.register(id.id, label) {
+				ctx.error("duplicate definition of label or symbol: %s", id.id)
+			}
+			tok = ctx.lexer.getToken()
+		}
+		switch tok.(type) {
+		case lineStarter:
+			if err := tok.(lineStarter).assemble(ctx, label); err == nil {
 				tok = ctx.lexer.getToken()
 				if _, ok := tok.(*tokNewLine); !ok {
-					ctx.error("expected end-of-line, not: '%T'", tok)
+					ctx.error("expected end-of-line, not: '%T(%v)'", tok, tok)
 				}
-				ctx.lexer.src.moveToNextLine()
-			case *tokEOF:
-				break loop
-			case *tokNewLine:
-				continue
-			default:
-				ctx.error("unexpected token at start of line: %T", tok)
-				ctx.lexer.src.moveToNextLine()
 			}
+			ctx.lexer.src.moveToNextLine()
+		case *tokEOF:
+			break loop
+		case *tokNewLine:
+			continue
+		default:
+			ctx.error("unexpected token at start of line: %T", tok)
+			ctx.lexer.src.moveToNextLine()
 		}
 	}
 }

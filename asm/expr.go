@@ -17,8 +17,7 @@ func (ctx *context) expr() *exprValue {
 		if sym, ok = ctx.seg.symbols[id.id]; !ok {
 			// The error will be generated down there somewhere.
 			ctx.lexer.pushback(tok)
-			v := ctx.level1()
-			return &exprValue{nil, v}
+			return &exprValue{nil, ctx.level1()}
 		}
 		if externSym, ok := sym.(*externSymbol); ok {
 			// This is an external symbol. The rest of the expression
@@ -29,6 +28,8 @@ func (ctx *context) expr() *exprValue {
 				v = ctx.level1()
 			} else if _, ok := next.(*tokMinus); ok {
 				v = -ctx.level1()
+			} else {
+				ctx.lexer.pushback(next)
 			}
 			return &exprValue{externSym, v}
 		}
@@ -107,7 +108,6 @@ func (ctx *context) level4() int64 {
 		next := ctx.lexer.getToken()
 		if _, ok := next.(*tokRightParen); !ok {
 			ctx.error("expected ')', not '%T'", next)
-			ctx.lexer.src.skipToEOLN()
 			return 0
 		}
 		return v
@@ -133,7 +133,7 @@ func (ctx *context) level4() int64 {
 		// Unary minus operator.
 		return -ctx.level4()
 	}
-	ctx.error("invalid expression; unexpected token: '%T'", next)
-	ctx.lexer.src.skipToEOLN()
+	ctx.lexer.pushback(next)
+	ctx.error("invalid expression; unexpected token: '%T(%v)'", next, next)
 	return 0
 }
