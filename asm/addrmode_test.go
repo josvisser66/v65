@@ -11,7 +11,7 @@ func TestAdrMode(t *testing.T) {
 		wantMode   int
 		wantValue    *int64
 	}{
-		{"", false, implied, nil},
+		{"", false, implicit, nil},
 		{"A",false, accumulator, nil},
 		{"#42",false, immediate, &f42},
 		{"#42,",true, immediate, &f42},
@@ -22,8 +22,8 @@ func TestAdrMode(t *testing.T) {
 		{"43,Z",true, errorAddrMode, nil},
 		{"(42)",false, indirect, &f42},
 		{"(42):z",true, errorAddrMode, nil},
-		{"(42),X",false, indirectX, &f42},
-		{"(42),Y",false, indirectY, &f42},
+		{"(42, X)",false, indexedIndirect, &f42},
+		{"(42),Y",false, indirectIndexed, &f42},
 		{"(42),Z",true, errorAddrMode, nil},
 	} {
 		println(tc.str)

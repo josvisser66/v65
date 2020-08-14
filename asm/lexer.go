@@ -168,6 +168,14 @@ func (s *source) getString() token {
 	}
 }
 
+// getNextToken returns the next token in the stream.
+func (s *source) getNextToken(next token) token {
+	if next != nil {
+		return next
+	}
+	return s.getToken()
+}
+
 // getToken returns the next token in the stream.
 func (s *source) getToken() token {
 	var r rune
