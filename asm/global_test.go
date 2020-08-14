@@ -17,7 +17,7 @@ func TestGlobal(t *testing.T) {
 	} {
 		println(tc.str)
 		ctx := &context{
-			src: newSourceFromString(tc.str),
+			lexer: &lexer{newSourceFromString(tc.str), nil},
 			seg: newSegment(),
 		}
 		ctx.seg.symbols["foo"] = &externSymbol{"foo"}

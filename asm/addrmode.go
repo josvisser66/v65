@@ -20,39 +20,28 @@ const (
 	indirectIndexed // (<expression>), Y
 )
 
-func (ctx *context) expectNewline(tok token) {
-	tok = ctx.src.getNextToken(tok)
-	if _, ok := tok.(*tokNewLine); ok {
-		return
-	}
-	ctx.error("expected end of line, not '%T'", tok)
-}
-
 // parseIndirect parses addressing modes that start with an lparen. When
 // the function is parsed the tokLparen needs to have already been parsed.
 func (ctx *context) parseIndirect() (int, *exprValue) {
-	val, next := ctx.expr(nil)
-	next = ctx.src.getNextToken(next)
+	val := ctx.expr()
+	next := ctx.lexer.getToken()
 	switch next.(type) {
 	case *tokComma:
 		// Must be (expr, X)
-		next = ctx.src.getToken()
+		next = ctx.lexer.getToken()
 		if _, ok := next.(*tokRegisterX); !ok {
 			ctx.error("expected X, not: '%T'", next)
-			ctx.src.skipRestOfLine()
 			return errorAddrMode, nil
 		}
-		next = ctx.src.getToken()
+		next = ctx.lexer.getToken()
 		if _, ok := next.(*tokRightParen); !ok {
 			ctx.error("expected ), not: '%T'", next)
-			ctx.src.skipRestOfLine()
 			return errorAddrMode, nil
 		}
-		ctx.expectNewline(nil)
 		return indexedIndirect, val
 	case *tokRightParen:
 		// Can be (expr) or (expr), Y
-		next = ctx.src.getToken()
+		next = ctx.lexer.getToken()
 		if _, ok := next.(*tokNewLine); ok {
 			// Is (expr) => Indirect.
 			return indirect, val
@@ -60,35 +49,31 @@ func (ctx *context) parseIndirect() (int, *exprValue) {
 		// Must be (expr), Y => Indirect indexed.
 		if _, ok := next.(*tokComma); !ok {
 			ctx.error("expected comma, not: '%T'", next)
-			ctx.src.skipRestOfLine()
 			return errorAddrMode, nil
 		}
-		next = ctx.src.getToken()
+		next = ctx.lexer.getToken()
 		if _, ok := next.(*tokRegisterY); !ok {
 			ctx.error("expected Y, not: '%T'", next)
-			ctx.src.skipRestOfLine()
 			return errorAddrMode, nil
 		}
-		ctx.expectNewline(nil)
 		return indirectIndexed, val
 	}
 	ctx.error("unexpected token: '%T'", next)
-	ctx.src.skipRestOfLine()
 	return errorAddrMode, nil
 }
 
 // parseAbsolute parses addressing modes that start with an expression.
 // Either expr or expr,X or expr,Y.
-func (ctx *context) parseAbsolute(firstToken token) (int, *exprValue) {
-	val, next := ctx.expr(firstToken)
-	next = ctx.src.getNextToken(next)
+func (ctx *context) parseAbsolute() (int, *exprValue) {
+	val := ctx.expr()
+	next := ctx.lexer.getToken()
 	switch next.(type) {
 	case *tokNewLine:
 		// If it was meant to be relative or zero page this gets resolved
 		// later.
 		return absolute, val
 	case *tokComma:
-		next = ctx.src.getToken()
+		next = ctx.lexer.getToken()
 		switch next.(type) {
 		case *tokRegisterX:
 			return absoluteX, val
@@ -97,29 +82,28 @@ func (ctx *context) parseAbsolute(firstToken token) (int, *exprValue) {
 		}
 	}
 	ctx.error("unexpected token: '%T'", next)
+	ctx.lexer.src.skipToEOLN()
 	return errorAddrMode, nil
 }
 
-// parseAddressingMode parses an addressing mode.
+// parseAddressingMode parses an addressing mode. It does not give
+// any errors about sizes or illegal use of external symbols. This
+// will be done during stuffing the bytes into the code segment.
 func (ctx *context) parseAddressingMode() (int, *exprValue) {
-	tok := ctx.src.getToken()
-	switch tok.(
-	type
-	) {
+	tok := ctx.lexer.getToken()
+	switch tok.( type ) {
 	case *tokNewLine:
 		return implicit, nil
 	case *tokRegisterA:
-		ctx.expectNewline(nil)
 		return accumulator, nil
 	case *tokHash:
 		// Immediate addressing.
-		val, next := ctx.expr(nil)
-		ctx.expectNewline(next)
-		return immediate, val
+		return immediate, ctx.expr()
 	case *tokLeftParen:
 		// Some form of indirect addressing.
 		return ctx.parseIndirect()
 	}
 	// At this point we have either expr or expr,X or expr,Y.
-	return ctx.parseAbsolute(tok)
+	ctx.lexer.pushback(tok)
+	return ctx.parseAbsolute()
 }

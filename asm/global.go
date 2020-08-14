@@ -3,14 +3,13 @@ package asm
 type tokGlobal struct{}
 
 // assemble assembles a global statement.
-func (*tokGlobal) assemble(ctx *context, label *localSymbol) {
+func (*tokGlobal) assemble(ctx *context, label *localSymbol) error {
 	for {
-		tok := ctx.src.getToken()
-		id, ok := tok.(*tokIdentifier)
+		next := ctx.lexer.getToken()
+		id, ok := next.(*tokIdentifier)
 		if !ok {
-			ctx.error("expected identifier, not '%T'", tok)
-			ctx.src.skipRestOfLine()
-			return
+			ctx.error("expected identifier, not '%T'", next)
+			return parseError
 		}
 		sym, ok := ctx.seg.symbols[id.id]
 		if !ok {
@@ -23,16 +22,15 @@ func (*tokGlobal) assemble(ctx *context, label *localSymbol) {
 				ls.global = true
 			}
 		}
-		tok = ctx.src.getToken()
-		switch tok.(type) {
+		next = ctx.lexer.getToken()
+		switch next.(type) {
 		case *tokNewLine:
-			return
+			return nil
 		case *tokComma:
-			continue
+			// pass
 		default:
-			ctx.error("expected identifier, not '%T'", tok)
-			ctx.src.skipRestOfLine()
-			return
+			ctx.error("expected identifier, not '%T'", next)
+			return parseError
 		}
 	}
 }

@@ -5,7 +5,7 @@ import "fmt"
 // context is the assembly context.
 type context struct{
 	pass int
-	src *source
+	lexer *lexer
 	seg *segment
 	errors int
 	warnings int
@@ -24,19 +24,19 @@ func (ctx *context) lexError(tok token) bool {
 
 // error reports an error.
 func (ctx *context) error(s string, args ...interface{}) {
-	fmt.Printf("[%d:%d] error: %s\n", ctx.src.lineNo, ctx.src.curPos, fmt.Sprintf(s, args...))
+	fmt.Printf("[%d:%d] error: %s\n", ctx.lexer.src.lineNo, ctx.lexer.src.curPos, fmt.Sprintf(s, args...))
 	ctx.errors++
 }
 
 // warning reports a warning.
 func (ctx *context) warning(s string, args ...interface{}) {
-	fmt.Printf("[%d:%d] warning: %s", ctx.src.lineNo, ctx.src.curPos, fmt.Sprintf(s, args...))
+	fmt.Printf("[%d:%d] warning: %s", ctx.lexer.src.lineNo, ctx.lexer.src.curPos, fmt.Sprintf(s, args...))
 	ctx.warnings++
 }
 
 // expect expects a token and registers an error if that token did not appear,
 func (ctx *context) expect(f func(token) bool, typ string) (tok token, ok bool) {
-	tok = ctx.src.getToken()
+	tok = ctx.lexer.getToken()
 	ok = f(tok)
 	if !ok {
 		ctx.error("expected %s, not '%T'", typ, tok)

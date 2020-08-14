@@ -21,7 +21,7 @@ func TestExtern(t *testing.T) {
 	} {
 		println(tc.src)
 		ctx := &context{
-			src: newSourceFromString(tc.src),
+			lexer: &lexer{newSourceFromString(tc.src), nil},
 			seg: newSegment(),
 		}
 		ctx.assemble()

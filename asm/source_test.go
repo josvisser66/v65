@@ -5,7 +5,6 @@ import "testing"
 const testData = "aap\n\nnoot"
 
 func testIt(t *testing.T, src *source) {
-	// consumeRune will return a newline after the last line.
 	got := make([]rune, 0, 10)
 	for {
 		r, eof := src.consumeRune()
@@ -13,6 +12,9 @@ func testIt(t *testing.T, src *source) {
 			break
 		}
 		got = append(got, r)
+		if r == '\n' {
+			src.moveToNextLine()
+		}
 	}
 	want := []rune{'a', 'a', 'p', '\n', '\n', 'n', 'o', 'o', 't', '\n'}
 	if len(got) != len(want) {

@@ -9,16 +9,17 @@ import (
 type source struct {
 	filename string
 	lines    []string
-	lineNo   int
+	lineNo   int // 1-based, so not directly an index into lines
 	curLine  []rune
-	curPos   int
+	curPos   int // 1-based, so not directly an index into curLine
 	nextChar rune
+	nextToken token
 }
 
 // newSourceFromString creates a new source file struct from a string value.
 // The data string will be split on newlines.
 func newSourceFromString(data string) *source {
-	return &source{lines: strings.Split(data, "\n"), lineNo: -1}
+	return &source{lines: strings.Split(data, "\n"), lineNo: 0}
 }
 
 // newSource creates a new source file struct a file name.
@@ -43,20 +44,22 @@ func (s *source) peekRune() (r rune, eof bool) {
 	if s.nextChar != 0 {
 		return s.nextChar, false
 	}
-	if s.curLine == nil || s.curPos > len(s.curLine) {
-		if s.lineNo == len(s.lines) - 1 {
-			return 0, true
-		}
-		s.lineNo++
-		s.curLine = []rune(s.lines[s.lineNo])
-		s.curPos = 0
+	// If this is the first time we are calling peekRune, we move
+	// to the next line.
+	if s.lineNo == 0 {
+		s.moveToNextLine()
 	}
-	if s.curPos == len(s.curLine) {
+	// If we are pointed at the line after the last one, we return eof.
+	if s.lineNo == len(s.lines)+1 {
+		return 0, true
+	}
+	// If we exhausted this line we keep returning newlines.
+	if s.curPos == len(s.curLine) + 1 {
 		s.nextChar = '\n'
 	} else {
-		s.nextChar = s.curLine[s.curPos]
+		s.nextChar = s.curLine[s.curPos-1]
+		s.curPos++
 	}
-	s.curPos++
 	return s.nextChar, false
 }
 
@@ -67,12 +70,18 @@ func (s *source) consumeRune() (r rune, eof bool) {
 	return
 }
 
-// skipRestOfLine skips all characters until the end of the line. After
-// calling this function the next rune returned will be the first rune
-// of the next line.
-func (s* source) skipRestOfLine() {
-	s.nextChar = 0
-	s.curPos = len(s.curLine) + 1
+// moveToNextLine moves to the next line of the input. We never move
+// beyond the line after the next line though.
+func (s *source) moveToNextLine() {
+	if s.lineNo == len(s.lines) + 1 {
+		return
+	}
+	s.lineNo++
+	s.curLine = nil
+	s.curPos = 1
+	if s.lineNo <= len(s.lines) {
+		s.curLine = []rune(s.lines[s.lineNo-1])
+	}
 }
 
 // skipToEOLN skips all characters until the end of the line. After
@@ -80,5 +89,5 @@ func (s* source) skipRestOfLine() {
 // character.
 func (s *source) skipToEOLN() {
 	s.nextChar = '\n'
-	s.curPos = len(s.curLine)
+	s.curPos = len(s.curLine) + 1
 }

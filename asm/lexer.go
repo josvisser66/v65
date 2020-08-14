@@ -54,6 +54,12 @@ type tokError struct {
 	linePos int
 }
 
+// lexer is an object that converts a stream of characters into a stream of tokens
+type lexer struct {
+	src *source
+	nextToken token
+}
+
 // metaMap is a map from an identifier to a token that represents
 // an assembler meta instruction.
 var metaMap = make(map[string]token)
@@ -67,46 +73,46 @@ func (t *tokError) Error() string {
 // getWord returns the next word from the stream. firstRune is the first
 // (starter) rune for the word, which has already been consumed from
 // the string.
-func (s *source) getWord(firstRune rune) string {
+func (l *lexer) getWord(firstRune rune) string {
 	word := make([]rune, 1, 64)
 	word[0] = firstRune
 	for {
-		r, eof := s.peekRune()
+		r, eof := l.src.peekRune()
 		if eof || (!unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_') {
 			return string(word)
 		}
 		word = append(word, unicode.ToLower(r))
-		s.consumeRune()
+		l.src.consumeRune()
 	}
 }
 
 // getAllowedString returns the next hex/bin/decimal digit string from the stream.
-func (s *source) getAllowedString(firstRune rune, allowed string) string {
+func (l *lexer) getAllowedString(firstRune rune, allowed string) string {
 	str := make([]rune, 0, 32)
 	if firstRune != 0 {
 		str = append(str, firstRune)
 	}
 	for {
-		r, eof := s.peekRune()
+		r, eof := l.src.peekRune()
 		r = unicode.ToLower(r)
 		if eof || strings.IndexRune(allowed, r) == -1 {
 			return string(str)
 		}
 		str = append(str, r)
-		s.consumeRune()
+		l.src.consumeRune()
 	}
 }
 
 // getNumber returns a number from the stream. If firstRune > 0 it is the
 // first rune of the number, which has already been consumed.
-func (s *source) getIntNumber(firstRune rune, base int, allowed string) token {
-	pos := s.curPos
-	str := s.getAllowedString(firstRune, allowed)
+func (l *lexer) getIntNumber(firstRune rune, base int, allowed string) token {
+	pos := l.src.curPos
+	str := l.getAllowedString(firstRune, allowed)
 	if str == "" {
 		return &tokError{
 			s:       "Illegal number (empty string)",
-			source:  s,
-			lineNo:  s.lineNo,
+			source:  l.src,
+			lineNo:  l.src.lineNo,
 			linePos: pos,
 		}
 	}
@@ -114,8 +120,8 @@ func (s *source) getIntNumber(firstRune rune, base int, allowed string) token {
 	if err != nil {
 		return &tokError{
 			s:       err.Error(),
-			source:  s,
-			lineNo:  s.lineNo,
+			source:  l.src,
+			lineNo:  l.src.lineNo,
 			linePos: pos,
 		}
 	}
@@ -124,8 +130,8 @@ func (s *source) getIntNumber(firstRune rune, base int, allowed string) token {
 
 // getIdentifier takes a first rune, parses a valid identifier out of the stream
 // and then returns the right token for it.
-func (s *source) getIdentifier(firstRune rune) token {
-	id := s.getWord(firstRune)
+func (l *lexer) getIdentifier(firstRune rune) token {
+	id := l.getWord(firstRune)
 	if _, ok := opcodes[id]; ok {
 		return &tokOpcode{opcode: id}
 	}
@@ -144,44 +150,53 @@ func (s *source) getIdentifier(firstRune rune) token {
 }
 
 // getString returns a string parsed from the input stream.
-func (s *source) getString() token {
+func (l *lexer) getString() token {
 	b := strings.Builder{}
 	for {
-		r, eof := s.peekRune()
+		r, eof := l.src.peekRune()
 		if r == '\n' || eof {
 			return &tokError{
 				s:       "Unexpected end-of-line",
-				source:  s,
-				lineNo:  s.lineNo,
-				linePos: s.curPos,
+				source:  l.src,
+				lineNo:  l.src.lineNo,
+				linePos: l.src.curPos,
 			}
 		}
 		if r == '"' {
-			s.consumeRune()
-			r, _ := s.peekRune()
+			l.src.consumeRune()
+			r, _ := l.src.peekRune()
 			if r != '"' {
 				return &tokString{s: b.String()}
 			}
 		}
 		b.WriteRune(r)
-		s.consumeRune()
+		l.src.consumeRune()
 	}
 }
 
-// getNextToken returns the next token in the stream.
-func (s *source) getNextToken(next token) token {
-	if next != nil {
-		return next
+// pushback pushes a single token back into the stream. If tok is nil
+// it is not pushed back.
+func (l *lexer) pushback(tok token) {
+	if tok == nil {
+		return
 	}
-	return s.getToken()
+	if l.nextToken != nil {
+		panic(fmt.Sprintf("pushbackToken(%T %v) while nextToken=%F %v", tok, tok, l.nextToken, l.nextToken))
+	}
+	l.nextToken = tok
 }
 
 // getToken returns the next token in the stream.
-func (s *source) getToken() token {
+func (l *lexer) getToken() token {
+	if l.nextToken != nil {
+		tok := l.nextToken
+		l.nextToken = nil
+		return tok
+	}
 	var r rune
 	for {
 		var eof bool
-		r, eof = s.consumeRune()
+		r, eof = l.src.consumeRune()
 		if eof {
 			return &tokEOF{}
 		}
@@ -194,53 +209,52 @@ func (s *source) getToken() token {
 	}
 	if r == ';' {
 		// Ignores comments.
-		s.skipRestOfLine()
 		return &tokNewLine{}
 	}
 	if unicode.IsDigit(r) && r != '0' {
 		// Special casing for 0x etc below.
-		return s.getIntNumber(r, 10, decimalDigits)
+		return l.getIntNumber(r, 10, decimalDigits)
 	}
 	r = unicode.ToLower(r)
 	if unicode.IsLetter(r) || r == '_' {
 		// Identifier or keyword.
-		return s.getIdentifier(r)
+		return l.getIdentifier(r)
 	}
 	switch r {
 	case '0':
 		// A number.
-		r, eof := s.peekRune()
+		r, eof := l.src.peekRune()
 		if r == '\n' || eof {
 			// A number just before the newline.
 			return &tokIntNumber{0}
 		}
 		if r == 'x' {
-			s.consumeRune()
-			return s.getIntNumber(0, 16, hexDigits)
+			l.src.consumeRune()
+			return l.getIntNumber(0, 16, hexDigits)
 		}
 		if r == 'b' {
-			s.consumeRune()
-			return s.getIntNumber(0, 2, binaryDigits)
+			l.src.consumeRune()
+			return l.getIntNumber(0, 2, binaryDigits)
 		}
-		return s.getIntNumber('0', 8, octalDigits)
+		return l.getIntNumber('0', 8, octalDigits)
 	case '\'':
-		r, _ := s.consumeRune()
+		r, _ := l.src.consumeRune()
 		t := &tokRune{r}
-		r, eof := s.peekRune()
+		r, eof := l.src.peekRune()
 		if !eof && r == '\'' {
-			s.consumeRune()
+			l.src.consumeRune()
 			return t
 		}
 		return &tokError{
 			s:       "Expected ' to end character constant",
-			source:  s,
-			lineNo:  s.lineNo,
-			linePos: s.curPos,
+			source:  l.src,
+			lineNo:  l.src.lineNo,
+			linePos: l.src.curPos,
 		}
 	case '"':
-		return s.getString()
+		return l.getString()
 	case '$':
-		return s.getIntNumber(0, 16, hexDigits)
+		return l.getIntNumber(0, 16, hexDigits)
 	case '#':
 		return &tokHash{}
 	case ',':

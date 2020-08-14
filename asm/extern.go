@@ -2,32 +2,29 @@ package asm
 
 type tokExtern struct{}
 
-func (*tokExtern) assemble(ctx *context, _label *localSymbol) {
+func (*tokExtern) assemble(ctx *context, _label *localSymbol) error {
 	for {
 		// First, we expect an identifier.
-		tok, ok := ctx.expect(func(t token) bool {
-			_, ok := t.(*tokIdentifier)
-			return ok
-		}, "identifier")
+		next := ctx.lexer.getToken()
+		id, ok := next.(*tokIdentifier)
 		if !ok {
-			ctx.src.skipRestOfLine()
-			return
+			ctx.error("expected identifier, not: '%T'", next)
+			return parseError
 		}
-		id := tok.(*tokIdentifier)
 		if ctx.seg.symbols.register(id.id, &externSymbol{id.id}) {
 			ctx.warning("redefinition of symbol %s\n", id.id)
 		}
 		// Then we either get a comma and we go around again, or we
 		// get a newline and then we're done.
-		tok = ctx.src.getToken()
-		switch t := tok.(type) {
+		next = ctx.lexer.getToken()
+		switch t := next.(type) {
 		case *tokNewLine:
-			return
+			return nil
 		case *tokComma:
 			// pass
 		default:
 			ctx.error("expected comma or end of line, not '%T'", t)
-			ctx.src.skipToEOLN()
+			return parseError
 		}
 	}
 }

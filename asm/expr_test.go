@@ -87,13 +87,11 @@ func TestExpressionEval(t *testing.T) {
 	} {
 		println(tc.str, "=>", tc.wantNum)
 		ctx := &context{
-			src: newSourceFromString(tc.str),
+			lexer: &lexer{newSourceFromString(tc.str), nil},
 			seg: seg,
 		}
-		val, next := ctx.expr(nil)
-		if next == nil {
-			next = ctx.src.getToken()
-		}
+		val := ctx.expr()
+		next := ctx.lexer.getToken()
 		if (val.sym == nil && tc.wantSym) || (val.sym!= nil && !tc.wantSym) {
 			t.Errorf("val.sym: got:%v, want-nil:%v", val.sym, tc.wantSym)
 		}

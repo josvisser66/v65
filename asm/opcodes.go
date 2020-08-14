@@ -68,7 +68,6 @@ var opcodes = opcodeMap{
 
 func (op *tokOpcode) assemble(ctx *context) {
 	mode, val := ctx.parseAddressingMode()
-	ctx.expectNewline(nil)
 
 	// If this is a branch instruction the parsed addressing mode needs
 	// to be absolute, and we turn it into relative.
